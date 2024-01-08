@@ -12,7 +12,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.get("/assignments", function (req, res) {
   let limit;
-  req.query.limit ? (limit = 10) : (limit = Number(req.query.limit));
+  req.query.limit ? (limit = Number(req.query.limit)) : (limit = 10);
   if (limit > 10) {
     return res.json({
       message: "Invalid request,limit must not exceeds 10 assignments",
@@ -30,6 +30,11 @@ app.get("/assignments/:assignmentsId", function (req, res) {
   const assignmentData = mockAssignments.filter((item) => {
     return item.id === clientAssignmentsId;
   });
+  if (assignmentData.length === 0) {
+    return res.json({
+      message: "Cannot fectch, No data available!",
+    });
+  }
   return res.json({
     message: "Complete Fetching assignments",
     data: assignmentData[0],
@@ -41,6 +46,12 @@ app.get("/assignments/:assignmentsId/comments", function (req, res) {
   const commentsData = mockComments.filter((item) => {
     return item.assignmentId === clientAssignmentsId;
   });
+  if (commentsData.length === 0) {
+    return res.json({
+      message: "Cannot fectch, No data available!",
+    });
+  }
+
   return res.json({
     message: "Complete fetching comments",
     data: commentsData,
@@ -67,15 +78,15 @@ app.post("/assignments", function (req, res) {
 
 app.post("/assignments/:assignmentsId/comments", function (req, res) {
   const clientAssignmentsId = Number(req.params.assignmentsId);
-  const { categories } = req.body;
-  if (!clientAssignmentsId || !categories) {
+  const { content } = req.body;
+  if (!clientAssignmentsId || !content) {
     return res.status(400).json({ message: "Missing required fields" });
   }
 
   const newComments = {
     id: mockComments[mockComments.length - 1].id + 1,
     assignmentId: clientAssignmentsId,
-    ...req.body,
+    content,
   };
   mockComments.push(newComments);
   return res.json({
@@ -86,14 +97,18 @@ app.post("/assignments/:assignmentsId/comments", function (req, res) {
 
 app.delete("/assignments/:assignmentsId", function (req, res) {
   const clientAssignmentsId = Number(req.params.assignmentsId);
+  const assignmentsIndex = mockAssignments.findIndex((item) => {
+    return item.id === clientAssignmentsId;
+  });
   const newAssignmentsData = mockAssignments.filter((item) => {
     return item.id !== clientAssignmentsId;
   });
-  newAssignmentsData.length == 0
-    ? res.json({
-        message: "Cannot delete, No data available!",
-      })
-    : (mockAssignments = newAssignmentsData);
+  if (assignmentsIndex === -1) {
+    return res.json({
+      message: "Cannot delete, No data available!",
+    });
+  }
+  mockAssignments = newAssignmentsData;
   return res.json({
     message: "Assignment has been deleted successfully",
   });
@@ -106,9 +121,9 @@ app.put("/assignments/:assignmentsId", function (req, res) {
     return res.status(400).json({ message: "Missing required fields" });
   }
   const assignmentsIndex = mockAssignments.findIndex((item) => {
-    return (item.id = clientAssignmentsId);
+    return item.id === clientAssignmentsId;
   });
-  if (assignmentsIndex) {
+  if (assignmentsIndex !== -1) {
     mockAssignments[assignmentsIndex] = {
       id: clientAssignmentsId,
       title,
@@ -117,6 +132,7 @@ app.put("/assignments/:assignmentsId", function (req, res) {
     };
     return res.json({
       message: "This assignment has been updated successfully",
+      data: mockAssignments[assignmentsIndex],
     });
   } else {
     return res.json({
